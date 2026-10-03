@@ -1,34 +1,3 @@
-name: Build muyynguyen iOS App
-
-on:
-  push:
-    branches: ["main", "master"]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: macos-14
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Liet ke Xcode co san
-        run: ls /Applications | grep Xcode
-
-      - name: Chon Xcode moi nhat
-        run: |
-          LATEST_XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)
-          echo "Dang chon: $LATEST_XCODE"
-          sudo xcode-select -s "$LATEST_XCODE"
-          xcodebuild -version
-
-      - name: Cai dat XcodeGen
-        run: brew install xcodegen
-
-      - name: Tao Xcode Project
-        run: xcodegen generate
-
       - name: Build Ung dung
         run: |
           set -o pipefail
@@ -40,9 +9,9 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee xcodebuild.log | grep -E "error:|warning:" || true
-          echo "===== FULL LOG BELOW (neu can) ====="
-          cat xcodebuild.log
+            build 2>&1 | tee xcodebuild.log
+          echo "===== Loc dong error/warning ====="
+          grep -E "error:|warning:" xcodebuild.log || echo "Khong co error/warning nao duoc tim thay"
 
       - name: Upload build log
         if: always()
@@ -51,17 +20,19 @@ jobs:
           name: xcodebuild-log
           path: xcodebuild.log
 
+      - name: Kiem tra binary truoc khi dong goi
+        run: |
+          APP_PATH="build/Build/Products/Release-iphoneos/muyynguyen.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "LOI: Khong tim thay $APP_PATH — build that bai thuc su, xem xcodebuild.log"
+            exit 1
+          fi
+          file "$APP_PATH/muyynguyen"
+          stat -f%z "$APP_PATH/muyynguyen"
+
       - name: Dong goi thanh file .IPA
         run: |
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/muyynguyen.app Payload/
-          zip -r muyynguyen.ipa Payload
+          ditto -c -k --sequesterRsrc --keepParent Payload muyynguyen.ipa
           rm -rf Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: muyynguyen-release-ipa
-          path: muyynguyen.ipa
-          retention-days: 7
-
