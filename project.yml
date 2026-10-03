@@ -5,7 +5,7 @@ targets:
   muyynguyen:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "17.0"
     sources: ["."]
     exclude:
       - ".github"
